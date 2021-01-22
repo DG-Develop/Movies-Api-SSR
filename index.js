@@ -1,10 +1,12 @@
 const express = require('express')
 const passport = require('passport')
+const session = require('express-session')
 const boom = require('@hapi/boom')
 const cookieParser = require('cookie-parser')
 const axios = require('axios')
 
 const { config } = require('./config')
+const { use } = require('passport')
 
 const app = express()
 
@@ -12,14 +14,25 @@ const app = express()
 app.use(express.json())
 app.use(cookieParser())
 
+// Toda la parte de sesion es requerido porque Twitter require una sesion activa
+app.use(session({ secret: config.sessionSecret }))
+app.use(passport.initialize())
+app.use(passport.session())
+
 // Basic strategy
 require('./utils/auth/strategies/basic')
 
 // OAuth
 require('./utils/auth/strategies/oauth')
 
-// Google
+// Google Strategy
 require('./utils/auth/strategies/google')
+
+// Twitter Strategy
+require('./utils/auth/strategies/twitter')
+
+// Facebook Strategy
+require('./utils/auth/strategies/facebook')
 
 const THIRTY_DAYS_IN_SEC = 2592000000
 const TWO_HOURS_IN_SEC = 7200000
@@ -80,14 +93,14 @@ app.post("/user-movies", async function (req, res, next) {
         const { body: userMovie } = req
         const { token } = req.cookies
 
-        const{ data, status } = await axios({
+        const { data, status } = await axios({
             url: `${config.apiUrl}/api/user-movies`,
             headers: { Authorization: `Bearer ${token}` },
             method: 'post',
             data: userMovie
         })
 
-        if (status !== 201){
+        if (status !== 201) {
             return next(boom.badImplementation())
         }
 
@@ -108,7 +121,7 @@ app.delete("/user-movies/:userMovieId", async function (req, res, next) {
             method: "delete"
         })
 
-        if (status !== 200){
+        if (status !== 200) {
             return next(boom.badImplementation())
         }
 
@@ -123,10 +136,10 @@ app.get("/auth/google-oauth", passport.authenticate("google-oauth", {
 }))
 
 app.get(
-    "/auth/google-oauth/callback", 
+    "/auth/google-oauth/callback",
     passport.authenticate("google-oauth", { session: false }),
-    async (req, res, next) =>{
-        if(!req.user){
+    async (req, res, next) => {
+        if (!req.user) {
             next(boom.unauthorized())
         }
 
@@ -149,8 +162,52 @@ app.get(
 app.get(
     "/auth/google/callback",
     passport.authenticate("google", { session: false }),
+    function (req, res, next) {
+        if (!req.user) {
+            next(boom.unauthorized())
+        }
+
+        const { token, ...user } = req.user
+
+        res.cookie("token", token, {
+            httpOnly: !config.dev,
+            secure: !config.dev
+        })
+
+        res.status(200).json(user)
+    }
+)
+
+app.get('/auth/twitter', passport.authenticate("twitter"))
+
+app.get(
+    "/auth/twitter/callback",
+    passport.authenticate("twitter", { session: false }),
     function (req, res, next){
         if(!req.user){
+            next(boom.unauthorized())
+        }
+
+        const { token, ...user } = req.user
+
+        res.cookie("token", token, {
+            httpOnly: !config.dev,
+            secure: !config.dev
+        })
+
+        res.status(200).json(user)
+    }
+)
+
+app.get("/auth/facebook", passport.authenticate("facebook",{
+    scope: ['email']
+}))
+
+app.get(
+    "/auth/facebook/callback",
+    passport.authenticate("facebook", { session: false }),
+    function (req, res, next) {
+        if (!req.user) {
             next(boom.unauthorized())
         }
 
