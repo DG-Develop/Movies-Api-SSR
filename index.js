@@ -1,4 +1,6 @@
 const express = require('express')
+const helmet = require('helmet')
+const bodyParser = require('body-parser')
 const passport = require('passport')
 const session = require('express-session')
 const boom = require('@hapi/boom')
@@ -6,13 +8,26 @@ const cookieParser = require('cookie-parser')
 const axios = require('axios')
 
 const { config } = require('./config')
-const { use } = require('passport')
 
 const app = express()
 
 // body parser
-app.use(express.json())
+app.use(bodyParser.urlencoded({ extended: true }))
+app.use(bodyParser.json())
+
+app.use((request, response, next) =>{
+    response.header('Access-Control-Allow-Origin', '*')
+    response.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization')
+
+    if(request.method === 'OPTIONS'){
+        response.header('Access-Control-Allow-Methods', 'PUT, POST, PATCH, DELETE, GET')
+        return response.status(200).json({})
+    }
+    next()
+})
+
 app.use(cookieParser())
+app.use(helmet())
 
 // Toda la parte de sesion es requerido porque Twitter require una sesion activa
 app.use(session({ secret: config.sessionSecret }))
