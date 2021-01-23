@@ -11,7 +11,9 @@ const config = {
     twitterConsumerKey: process.env.TWITTER_CONSUMER_KEY,
     twitterConsumerSecret: process.env.TWITTER_CONSUMER_SECRET,
     facebookClientSecret: process.env.FACEBOOK_CLIENT_SECRET,
-    facebookClientId: process.env.FACEBOOK_CLIENT_ID
+    facebookClientId: process.env.FACEBOOK_CLIENT_ID,
+    linkedinClientId: process.env.LINKEDIN_CLIENT_ID,
+    linkedinClientSecret: process.env.LINKEDIN_CLIENT_SECRET
 }
 
 module.exports = { config: config }

@@ -15,11 +15,11 @@ const app = express()
 app.use(bodyParser.urlencoded({ extended: true }))
 app.use(bodyParser.json())
 
-app.use((request, response, next) =>{
+app.use((request, response, next) => {
     response.header('Access-Control-Allow-Origin', '*')
     response.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization')
 
-    if(request.method === 'OPTIONS'){
+    if (request.method === 'OPTIONS') {
         response.header('Access-Control-Allow-Methods', 'PUT, POST, PATCH, DELETE, GET')
         return response.status(200).json({})
     }
@@ -48,6 +48,9 @@ require('./utils/auth/strategies/twitter')
 
 // Facebook Strategy
 require('./utils/auth/strategies/facebook')
+
+// LinkedIn Strategy
+require('./utils/auth/strategies/linkedin')
 
 const THIRTY_DAYS_IN_SEC = 2592000000
 const TWO_HOURS_IN_SEC = 7200000
@@ -198,8 +201,8 @@ app.get('/auth/twitter', passport.authenticate("twitter"))
 app.get(
     "/auth/twitter/callback",
     passport.authenticate("twitter", { session: false }),
-    function (req, res, next){
-        if(!req.user){
+    function (req, res, next) {
+        if (!req.user) {
             next(boom.unauthorized())
         }
 
@@ -214,13 +217,37 @@ app.get(
     }
 )
 
-app.get("/auth/facebook", passport.authenticate("facebook",{
+app.get("/auth/facebook", passport.authenticate("facebook", {
     scope: ['email']
 }))
 
 app.get(
     "/auth/facebook/callback",
     passport.authenticate("facebook", { session: false }),
+    function (req, res, next) {
+        if (!req.user) {
+            next(boom.unauthorized())
+        }
+
+        const { token, ...user } = req.user
+
+        res.cookie("token", token, {
+            httpOnly: !config.dev,
+            secure: !config.dev
+        })
+
+        res.status(200).json(user)
+    }
+)
+
+app.get(
+    "/auth/linkedin",
+    passport.authenticate("linkedin", { session: 'SOME STATE' })
+)
+
+app.get(
+    "/auth/linkedin/callback",
+    passport.authenticate("linkedin", { session: false }),
     function (req, res, next) {
         if (!req.user) {
             next(boom.unauthorized())
